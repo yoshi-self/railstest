@@ -1,0 +1,22 @@
+FROM ruby:2.6-alpine
+
+RUN apk add --no-cache \
+        nginx \
+        mariadb-connector-c
+
+WORKDIR /app
+COPY Gemfile Gemfile.lock /app/
+RUN apk add --no-cache --virtual .build-deps \
+        libxml2-dev curl-dev make gcc libc-dev g++ mariadb-connector-c-dev && \
+    bundle update --bundler && \
+    bundle install --without development test && \
+    apk del --no-cache .build-deps
+
+
+COPY nginx-site.conf /etc/nginx/conf.d/
+
+COPY . /app
+RUN mkdir /app/tmp/sockets
+
+ENTRYPOINT bundle exec puma -d && \
+           /usr/sbin/nginx -g 'daemon off;' -c /etc/nginx/nginx.conf
